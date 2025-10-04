@@ -223,6 +223,10 @@ def process_generation_request(mode, *args):
     - You MUST generate exactly **three** recent session notes from three different, realistic dates.
     - Each note must be written in a clinical format and include **measurable data**, **prompting levels**, and the **type of activity**.
     - **Session Note Example:** "Date: 10/02/2025. Activity: Story sequencing cards. Goal: Narrative retell. Data: Student retold a 4-step story using temporal markers ('first', 'next') with 75% accuracy (3/4 steps correct) given moderate verbal prompts to recall the next step. Will reduce prompting next session."
+    
+    **4. ⚠️ AVOID MONOTONY:**
+    - The retrieved context may contain many examples of common conditions like 'recurrent ear infections' (otitis media).
+    - **DO NOT** overuse these common conditions. You MUST creatively and realistically vary the medical histories for each student. Use the full range of information provided in the context to generate diverse profiles. If no other significant medical history is present in the context, state "No significant medical history reported."
     ---
     """
     prompt = ChatPromptTemplate.from_template(template)
