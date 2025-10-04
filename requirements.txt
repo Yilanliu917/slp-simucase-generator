@@ -12,13 +12,14 @@ langchain-anthropic
 
 # Vector Store and Document Loaders
 chromadb
+langchain-chroma  # <-- Add this line
 pypdf
 python-docx
-docx2txt # <-- Added for Docx2txtLoader
+docx2txt
+lxml
 
 # Utilities
 python-dotenv
 pydantic
 gradio
-sentencepiece # <-- Added for Gemini
-lxml # <-- Added for document parsing robustness
+sentencepiece
