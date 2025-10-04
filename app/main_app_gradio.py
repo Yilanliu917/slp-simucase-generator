@@ -14,11 +14,11 @@ from langchain_core.runnables import RunnablePassthrough
 
 # --- 1. CONFIGURATION and SETUP ---
 load_dotenv()
-DB_PATH = "slp_knowledge_base/"
+DB_PATH = "data/slp_knowledge_base/" # Assuming updated path
 EMBEDDING_MODEL = "text-embedding-3-small"
-MAX_CONDITIONS = 5 # Maximum number of different condition sets allowed in the UI
+MAX_CONDITIONS = 5
 
-# --- Pydantic Models (UNCHANGED) ---
+# --- Pydantic Models ---
 class BackgroundInfo(BaseModel):
     medical_history: str = Field(description="Relevant medical history.")
     parent_concerns: str = Field(description="Summary of concerns from parents.")
@@ -37,7 +37,6 @@ class SimuCaseFile(BaseModel):
     latest_session_notes: List[str]
 
 # --- 2. REFACTORED CORE LOGIC ---
-# Global dictionary to cache initialized models
 initialized_models = {}
 
 def get_llm(model_choice: str):
@@ -79,10 +78,8 @@ def process_generation_request(mode, *args, progress=gr.Progress()):
         for _ in range(int(num_students)):
             tasks.append({"grade": grade, "disorders": disorders, "model": model})
     else: # Multiple Conditions
-        # args is a flat list of all inputs from the multi-condition group
         for i in range(MAX_CONDITIONS):
-            # Each condition set has 4 inputs: grade, disorders, num, model
-            is_visible = args[i * 4 + 4] # Visibility flag for the row
+            is_visible = args[i * 4 + 4] 
             if is_visible:
                 grade, disorders, num, model = args[i*4 : i*4 + 4]
                 for _ in range(int(num)):
@@ -94,7 +91,21 @@ def process_generation_request(mode, *args, progress=gr.Progress()):
     embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     vectorstore = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
-    template = "Context: {context}\nQuestion: {question}"
+    
+    # --- START: MODIFIED TEMPLATE ---
+    # Re-introducing the expert role and detailed instructions for better performance.
+    template = """
+    You are an expert school-based CCC-SLP creating a simulation case file based on a user's request.
+    Use the following retrieved clinical context to generate a comprehensive, ethical, and realistic case file.
+    Structure your output to perfectly match the requested schema.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+    """
+    # --- END: MODIFIED TEMPLATE ---
     prompt = ChatPromptTemplate.from_template(template)
     
     all_profiles_md = ""
@@ -125,7 +136,7 @@ def process_generation_request(mode, *args, progress=gr.Progress()):
 
     return all_profiles_md
 
-# --- 4. CREATE THE GRADIO UI using Blocks ---
+# --- 4. CREATE THE GRADIO UI ---
 if __name__ == "__main__":
     grade_levels = ["Pre-K", "Kindergarten", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", 
                     "6th Grade", "7th Grade", "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"]
@@ -147,7 +158,7 @@ if __name__ == "__main__":
 
         multi_condition_rows = []
         with gr.Group(visible=False) as multi_condition_group:
-            visible_rows = gr.State(1) # Use State to track visible rows
+            visible_rows = gr.State(1)
             for i in range(MAX_CONDITIONS):
                 with gr.Row(visible=(i==0)) as row:
                     gr.Markdown(f"**Set {i+1}**")
@@ -164,7 +175,6 @@ if __name__ == "__main__":
         generate_button = gr.Button("Generate Case Files", variant="primary")
         output_display = gr.Markdown(label="Generated Case Files")
         
-        # --- UI Interactivity Logic ---
         def update_visibility(mode):
             return gr.update(visible=(mode == "Single Condition")), gr.update(visible=(mode == "Multiple Conditions"))
         gen_mode.change(fn=update_visibility, inputs=gen_mode, outputs=[single_condition_group, multi_condition_group])
