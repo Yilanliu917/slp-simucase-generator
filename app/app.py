@@ -16,7 +16,7 @@ from langchain_core.runnables import RunnablePassthrough
 
 # --- 1. CONFIGURATION and SETUP ---
 load_dotenv()
-DB_PATH = "data/slp_vector_db/"
+DB_PATH = "data/slp_knowledge_base/"
 EMBEDDING_MODEL = "text-embedding-3-small"
 MAX_CONDITIONS = 5
 DEFAULT_OUTPUT_PATH = "generated_case_files/"
@@ -66,10 +66,18 @@ def calculate_cost(model: str) -> float:
     return input_cost + output_cost
 
 def load_cost_log() -> Dict:
-    """Load cost tracking data from file."""
+    """Load cost tracking data from file, handling potential corruption."""
     if os.path.exists(COST_LOG_FILE):
-        with open(COST_LOG_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(COST_LOG_FILE, 'r') as f:
+                # Check if file is empty
+                if os.fstat(f.fileno()).st_size == 0:
+                    return {"daily_costs": {}, "total_cost": 0.0}
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(f"Warning: Corrupted cost log file '{COST_LOG_FILE}'. Creating a new one.")
+            # If corrupted, return a default empty log
+            return {"daily_costs": {}, "total_cost": 0.0}
     return {"daily_costs": {}, "total_cost": 0.0}
 
 def save_cost_log(cost_data: Dict):
@@ -279,7 +287,7 @@ if __name__ == "__main__":
     grade_levels = ["Pre-K", "Kindergarten", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", 
                     "6th Grade", "7th Grade", "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"]
     disorder_types = ["Speech Sound", "Articulation", "Phonology", "Fluency", 
-                      "Expressive Language", "Receptive Language", "Language", "Voice","Pragmatics","Functional Communication"]
+                      "Expressive Language", "Receptive Language", "Language", "Voice"]
     model_choices = ["gpt-4o", "gemini-2.5-pro", "claude-3-opus", "claude-3.5-sonnet"]
 
     with gr.Blocks(theme=gr.themes.Soft(), title="SLP SimuCase Generator", css="""

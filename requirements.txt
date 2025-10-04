@@ -1,5 +1,6 @@
 # requirements.txt (Updated)
 
+
 # Core LangChain Packages
 langchain
 langchain-core
@@ -12,7 +13,7 @@ langchain-anthropic
 
 # Vector Store and Document Loaders
 chromadb
-langchain-chroma  # <-- Add this line
+langchain-chroma
 pypdf
 python-docx
 docx2txt
@@ -23,3 +24,4 @@ python-dotenv
 pydantic
 gradio
 sentencepiece
+
