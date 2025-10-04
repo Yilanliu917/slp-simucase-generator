@@ -1,4 +1,13 @@
 ---
+title: SLP SimuCase Generator
+emoji: 🎯
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 4.31.0
+app_file: app.py
+pinned: false
+------
 🎯 SLP SimuCase Generator
 An AI-powered tool for Speech-Language Pathologists, students, and educators to generate realistic, simulated student case files for training and educational purposes. 
 
