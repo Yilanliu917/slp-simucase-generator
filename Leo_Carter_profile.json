@@ -1,0 +1,23 @@
+{
+    "student_profile": {
+        "name": "Leo Carter",
+        "age": 6,
+        "grade_level": "1st Grade",
+        "gender": "Male",
+        "background": {
+            "medical_history": "History of recurrent otitis media from ages 2-4, with pressure-equalizing (PE) tube placement at age 3. Hearing is within normal limits per recent school screening.",
+            "parent_concerns": "Parents report that Leo is often frustrated when family and friends ask him to repeat himself. They are concerned his speech is difficult to understand, especially when he is excited, and worry it may impact his ability to make friends.",
+            "teacher_concerns": "Teacher reports that Leo's speech errors impact his intelligibility during group discussions and reading activities. She notes he sometimes avoids speaking in front of the class and has observed some difficulty with phonemic awareness tasks involving his error sounds."
+        }
+    },
+    "annual_goals": [
+        "By the end of the IEP period, Leo will correctly produce the /s/ sound in the initial position of words with 80% accuracy across 3 consecutive sessions, given minimal verbal cues, as measured by SLP data collection.",
+        "By the end of the IEP period, Leo will correctly produce velar sounds (/k/, /g/) in the initial position of words with 80% accuracy across 3 consecutive sessions, given minimal tactile and verbal cues, as measured by SLP data collection.",
+        "By the end of the IEP period, Leo will generalize the correct production of the /s/ sound into 4-5 word sentences with 75% accuracy, given one verbal reminder, as measured by SLP data collection during structured conversation tasks."
+    ],
+    "latest_session_notes": [
+        "Leo worked on producing /s/ in the initial position of words using picture cards. He produced the target sound with 45% accuracy given a verbal prompt ('Use your long, snake sound') and a visual cue (tracing the letter 's') for each attempt. He demonstrated increased awareness of his error pattern (stopping /s/ to /t/), self-correcting on 2 occasions.",
+        "During a structured board game, Leo produced /s/ in the initial position of words with 60% accuracy, requiring only one verbal prompt ('Remember your snake sound') at the beginning of the activity. He was motivated by the game and demonstrated improved consistency compared to the previous session.",
+        "Leo practiced producing /s/-initial words within a carrier phrase ('I see a ___'). He achieved 55% accuracy with intermittent verbal and visual cues. Accuracy decreased slightly with the increased linguistic demand of the phrase level, but he responded well to corrective feedback and remained engaged in the task."
+    ]
+}

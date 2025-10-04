@@ -1,6 +1,21 @@
+# requirements.txt
+
+# Core LangChain Packages
 langchain
+langchain-core
+langchain-community
+
+# LLM Provider Packages
+langchain-openai
+langchain-google-genai
+langchain-anthropic
+
+# Vector Store and Document Loaders
+chromadb
 pypdf
 python-docx
-sentence-transformers
-chromadb
+
+# Utilities
 python-dotenv
+pydantic
+gradio
