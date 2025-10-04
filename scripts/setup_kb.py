@@ -3,41 +3,38 @@ from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 
-# --- LOAD API KEY ---
 load_dotenv() 
 
-# --- 1. DEFINE PATHS ---
-DATA_PATH = "slp_knowledge_base/" 
-DB_PATH = "slp_vector_db/"
+# --- 1. DEFINE PATHS (UPDATED) ---
+# The paths now point inside the 'data' folder
+DATA_PATH = "data/slp_knowledge_base/" 
+DB_PATH = "data/slp_vector_db/"
 
 # --- 2. LOAD THE DOCUMENTS ---
 print("Loading documents...")
 
-# Load PDF files
 pdf_loader = DirectoryLoader(
     DATA_PATH,
-    glob="**/*.pdf",    # Pattern to load only PDF files
-    loader_cls=PyPDFLoader, # Specify the loader class for PDFs
+    glob="**/*.pdf",
+    loader_cls=PyPDFLoader,
     use_multithreading=True
 )
 pdf_documents = pdf_loader.load()
 
-# Load DOCX files
 docx_loader = DirectoryLoader(
     DATA_PATH,
-    glob="**/*.docx",   # Pattern to load only DOCX files
-    loader_cls=Docx2txtLoader, # Specify the loader class for DOCX
+    glob="**/*.docx",
+    loader_cls=Docx2txtLoader,
     use_multithreading=True
 )
 docx_documents = docx_loader.load()
 
-# Combine the loaded documents into one list
 documents = pdf_documents + docx_documents
 
 if not documents:
-    print("No documents found. Please check your DATA_PATH and make sure you have documents in the folder.")
+    print(f"No documents found in {DATA_PATH}. Please check the path.")
 else:
     print(f"Loaded {len(documents)} documents.")
 
@@ -59,5 +56,5 @@ else:
         persist_directory=DB_PATH
     )
     print("--------------------------------------------------")
-    print(f"✅ Success! Your vector database using OpenAI is ready in the '{DB_PATH}' folder.")
+    print(f"✅ Success! Your vector database is ready in the '{DB_PATH}' folder.")
     print("--------------------------------------------------")
