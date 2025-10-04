@@ -10,27 +10,37 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
+from langchain_ollama import ChatOllama
+from langchain_core.output_parsers import JsonOutputParser
 from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 # --- 1. CONFIGURATION and SETUP ---
 load_dotenv()
-DB_PATH = "data/slp_vector_db/"
+DB_PATH = "data/slp_vector_db"
 EMBEDDING_MODEL = "text-embedding-3-small"
 MAX_CONDITIONS = 5
 DEFAULT_OUTPUT_PATH = "generated_case_files/"
 COST_LOG_FILE = "cost_tracking.json"
+FEEDBACK_LOG_FILE = "feedback_log.json"
+FEEDBACK_CATEGORIES_FILE = "feedback_categories.json"
 
 # Create default output directory if it doesn't exist
 os.makedirs(DEFAULT_OUTPUT_PATH, exist_ok=True)
 
 # API Cost per 1M tokens (based on official pricing)
 API_COSTS = {
-    "gpt-4o": {"input": 2.50, "output": 10.00},  # per 1M tokens
-    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},  # <=200k tokens, >200k: input $2.50, output $15.00
+    # Premium Models
+    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},
     "claude-3-opus": {"input": 15.00, "output": 75.00},
-    "claude-3.5-sonnet": {"input": 3.00, "output": 15.00}
+    "claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
+    # Free Models (local/open-source via Ollama)
+    "qwen2.5:32b": {"input": 0.00, "output": 0.00},
+    "qwen2.5:7b": {"input": 0.00, "output": 0.00},
+    "deepseek-r1:32b": {"input": 0.00, "output": 0.00},
+    "llama3.2:latest": {"input": 0.00, "output": 0.00}
 }
 
 # Estimated tokens per generation (average)
@@ -56,6 +66,10 @@ class SimuCaseFile(BaseModel):
     student_profile: StudentProfile
     annual_goals: List[str]
     latest_session_notes: List[str]
+
+class FeedbackCategories(BaseModel):
+    categories: List[str] = Field(description="List of distinct feedback category names")
+    category_descriptions: dict = Field(description="Dictionary mapping category names to their descriptions")
 
 # --- Cost Tracking Functions ---
 def calculate_cost(model: str) -> float:
@@ -107,6 +121,175 @@ def get_today_cost() -> float:
     today = datetime.now().strftime("%Y-%m-%d")
     return cost_log["daily_costs"].get(today, {}).get("total", 0.0)
 
+# --- Feedback Management Functions ---
+def load_feedback_log() -> List[Dict]:
+    """Load feedback history."""
+    if os.path.exists(FEEDBACK_LOG_FILE):
+        with open(FEEDBACK_LOG_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_feedback_log(feedback_data: List[Dict]):
+    """Save feedback history."""
+    with open(FEEDBACK_LOG_FILE, 'w') as f:
+        json.dump(feedback_data, f, indent=2)
+
+def load_feedback_categories() -> Dict:
+    """Load AI-generated feedback categories."""
+    if os.path.exists(FEEDBACK_CATEGORIES_FILE):
+        with open(FEEDBACK_CATEGORIES_FILE, 'r') as f:
+            return json.load(f)
+    return {"categories": [], "category_descriptions": {}}
+
+def save_feedback_categories(categories_data: Dict):
+    """Save feedback categories."""
+    with open(FEEDBACK_CATEGORIES_FILE, 'w') as f:
+        json.dump(categories_data, f, indent=2)
+
+def analyze_feedback_with_ai(new_feedback_text: str, existing_categories: List[str]) -> Dict:
+    """Use AI to categorize feedback and suggest new categories if needed."""
+    # Use a lightweight free model for feedback analysis
+    try:
+        llm = ChatOllama(
+            model="qwen2.5:32b",
+            temperature=0.3,
+            base_url="http://localhost:11434"
+        )
+    except:
+        # Fallback to GPT-4o-mini if Ollama not available
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+    
+    prompt = f"""Analyze this clinical feedback about an SLP case file generation and determine its category.
+
+Existing categories: {', '.join(existing_categories) if existing_categories else 'None yet'}
+
+New feedback: "{new_feedback_text}"
+
+Tasks:
+1. If the feedback fits an existing category, return that category name
+2. If it describes a new type of issue/concern, suggest a new category name (short, clear, professional)
+3. Provide a brief description of what this feedback is about
+
+Return your analysis in this exact format:
+CATEGORY: [category name]
+IS_NEW: [yes/no]
+DESCRIPTION: [brief description of the feedback issue]
+"""
+    
+    try:
+        response = llm.invoke(prompt)
+        content = response.content if hasattr(response, 'content') else str(response)
+        
+        # Parse response
+        lines = content.strip().split('\n')
+        result = {}
+        for line in lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                result[key.strip()] = value.strip()
+        
+        return {
+            "category": result.get("CATEGORY", "General Feedback"),
+            "is_new": result.get("IS_NEW", "no").lower() == "yes",
+            "description": result.get("DESCRIPTION", new_feedback_text[:100])
+        }
+    except Exception as e:
+        print(f"AI categorization failed: {e}")
+        return {
+            "category": "Uncategorized",
+            "is_new": True,
+            "description": new_feedback_text[:100]
+        }
+
+def submit_feedback(profile_index: int, feedback_text: str, selected_category: str = None) -> tuple:
+    """Process and store feedback, update categories if needed."""
+    if not feedback_text.strip():
+        return gr.update(), gr.update(value="⚠️ Please enter feedback text"), gr.update()
+    
+    # Load existing data
+    feedback_log = load_feedback_log()
+    categories_data = load_feedback_categories()
+    
+    timestamp = datetime.now().isoformat()
+    
+    # Determine category
+    if selected_category and selected_category != "Other (AI will categorize)":
+        # User selected existing category
+        category = selected_category
+        is_new = False
+        description = feedback_text[:100]
+    else:
+        # AI analyzes and categorizes
+        analysis = analyze_feedback_with_ai(
+            feedback_text, 
+            categories_data.get("categories", [])
+        )
+        category = analysis["category"]
+        is_new = analysis["is_new"]
+        description = analysis["description"]
+        
+        # Add new category if detected
+        if is_new:
+            if "categories" not in categories_data:
+                categories_data["categories"] = []
+            if "category_descriptions" not in categories_data:
+                categories_data["category_descriptions"] = {}
+            
+            categories_data["categories"].append(category)
+            categories_data["category_descriptions"][category] = description
+            save_feedback_categories(categories_data)
+    
+    # Store feedback
+    feedback_entry = {
+        "timestamp": timestamp,
+        "profile_index": profile_index,
+        "feedback_text": feedback_text,
+        "category": category,
+        "is_new_category": is_new
+    }
+    feedback_log.append(feedback_entry)
+    save_feedback_log(feedback_log)
+    
+    # Prepare success message
+    if is_new:
+        message = f"✅ Feedback saved! New category created: **{category}**"
+    else:
+        message = f"✅ Feedback saved under category: **{category}**"
+    
+    # Update category choices for dropdown
+    updated_choices = ["Other (AI will categorize)"] + categories_data.get("categories", [])
+    
+    return (
+        gr.update(value=""),  # Clear feedback text
+        gr.update(value=message, visible=True),  # Show success message
+        gr.update(choices=updated_choices)  # Update category dropdown
+    )
+
+def get_feedback_summary() -> str:
+    """Generate a summary of all collected feedback."""
+    feedback_log = load_feedback_log()
+    categories_data = load_feedback_categories()
+    
+    if not feedback_log:
+        return "📊 **No feedback collected yet.**"
+    
+    # Count by category
+    category_counts = defaultdict(int)
+    for entry in feedback_log:
+        category_counts[entry["category"]] += 1
+    
+    summary = f"## 📊 Feedback Summary\n\n"
+    summary += f"**Total Feedback Entries:** {len(feedback_log)}\n\n"
+    summary += f"**Categories ({len(category_counts)}):**\n\n"
+    
+    for category, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True):
+        desc = categories_data.get("category_descriptions", {}).get(category, "")
+        summary += f"- **{category}** ({count} entries)\n"
+        if desc:
+            summary += f"  - _{desc}_\n"
+    
+    return summary
+
 # --- 2. REFACTORED CORE LOGIC ---
 initialized_models = {}
 
@@ -117,26 +300,38 @@ def get_llm(model_choice: str):
 
     print(f"Initializing model: {model_choice}...")
     
-    model_map = {
+    # Premium API models
+    premium_model_map = {
         "gpt-4o": ChatOpenAI,
         "gemini-2.5-pro": ChatGoogleGenerativeAI,
         "claude-3-opus": ChatAnthropic,
         "claude-3.5-sonnet": ChatAnthropic
     }
-    model_name_map = {
+    premium_model_name_map = {
         "gpt-4o": "gpt-4o",
         "gemini-2.5-pro": "gemini-2.5-pro",
         "claude-3-opus": "claude-3-opus-20240229",
         "claude-3.5-sonnet": "claude-3-5-sonnet-20240620"
     }
     
-    model_class = model_map.get(model_choice)
-    model_name = model_name_map.get(model_choice)
+    # Free local models (via Ollama)
+    free_models = ["qwen2.5:32b", "qwen2.5:7b", "deepseek-r1:32b", "llama3.2:latest"]
     
-    if not model_class:
+    if model_choice in premium_model_map:
+        # Premium API model
+        model_class = premium_model_map[model_choice]
+        model_name = premium_model_name_map[model_choice]
+        llm = model_class(model=model_name, temperature=0.7).with_structured_output(SimuCaseFile)
+    elif model_choice in free_models:
+        # Free local model via Ollama
+        llm = ChatOllama(
+            model=model_choice,
+            temperature=0.7,
+            base_url="http://localhost:11434"  # Default Ollama endpoint
+        ).with_structured_output(SimuCaseFile)
+    else:
         raise ValueError(f"Invalid model selected: {model_choice}")
-        
-    llm = model_class(model=model_name, temperature=0.7).with_structured_output(SimuCaseFile)
+    
     initialized_models[model_choice] = llm
     return llm
 
@@ -279,8 +474,28 @@ if __name__ == "__main__":
     grade_levels = ["Pre-K", "Kindergarten", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", 
                     "6th Grade", "7th Grade", "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"]
     disorder_types = ["Speech Sound", "Articulation", "Phonology", "Fluency", 
-                      "Expressive Language", "Receptive Language", "Language", "Voice","Pragmatics","Functional Communication"]
-    model_choices = ["gpt-4o", "gemini-2.5-pro", "claude-3-opus", "claude-3.5-sonnet"]
+                      "Expressive Language", "Receptive Language", "Language", "Voice"]
+    
+    # Model choices separated by tier
+    free_models = [
+        ("Qwen 2.5 32B (Free)", "qwen2.5:32b"),
+        ("Qwen 2.5 7B (Free)", "qwen2.5:7b"),
+        ("DeepSeek R1 32B (Free)", "deepseek-r1:32b"),
+        ("llama3.2:latest (Free)", "llama3.2:latest")
+    ]
+    premium_models = [
+        ("GPT-4o (Premium)", "gpt-4o"),
+        ("Gemini 2.5 Pro (Premium)", "gemini-2.5-pro"),
+        ("Claude 3 Opus (Premium)", "claude-3-opus"),
+        ("Claude 3.5 Sonnet (Premium)", "claude-3.5-sonnet")
+    ]
+    
+    # Combined list with separator
+    all_model_choices = [
+        ("--- FREE MODELS (Local) ---", "separator-free"),
+    ] + free_models + [
+        ("--- PREMIUM MODELS (API) ---", "separator-premium"),
+    ] + premium_models
 
     with gr.Blocks(theme=gr.themes.Soft(), title="SLP SimuCase Generator", css="""
         .generate-btn {
@@ -296,9 +511,22 @@ if __name__ == "__main__":
             border-radius: 4px;
             text-align: center;
         }
+        .model-info {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-top: 4px;
+        }
     """) as ui:
         gr.Markdown("# 🎯 SLP SimuCase Generator")
         gr.Markdown("Generate realistic speech-language pathology case files using AI models")
+        gr.Markdown("""
+        <div class="model-info">
+        💡 <strong>Model Tiers:</strong><br>
+        • <strong>Free Models</strong>: Run locally via Ollama (requires Ollama installed) - No API costs<br>
+        • <strong>Premium Models</strong>: Cloud API models - Best quality, costs apply
+        </div>
+        """)
         
         # Cost display at the top
         with gr.Row():
@@ -317,7 +545,11 @@ if __name__ == "__main__":
         with gr.Group(visible=True) as single_condition_group:
             with gr.Row():
                 num_students_single = gr.Number(label="Number of Students", value=1, minimum=1, step=1)
-                model_single = gr.Dropdown(choices=model_choices, label="AI Model", value="gpt-4o")
+                model_single = gr.Dropdown(
+                    choices=all_model_choices, 
+                    label="AI Model", 
+                    value="qwen2.5:32b"
+                )
             single_grade = gr.Dropdown(choices=grade_levels, label="Grade Level", value="1st Grade")
             single_disorders = gr.Dropdown(
                 choices=disorder_types, 
@@ -342,7 +574,11 @@ if __name__ == "__main__":
                         multiselect=True
                     )
                     num = gr.Number(label="# Students", value=1, minimum=1, step=1)
-                    model = gr.Dropdown(choices=model_choices, label="Model", value="gpt-4o")
+                    model = gr.Dropdown(
+                        choices=all_model_choices, 
+                        label="Model", 
+                        value="qwen2.5:32b"
+                    )
                     multi_condition_rows.append([grade, disorders, num, model])
                     multi_condition_row_components.append(row)
             
@@ -372,6 +608,47 @@ if __name__ == "__main__":
         progress_status = gr.Markdown(value="", visible=False)
         
         output_display = gr.Markdown(label="Generated Case Files")
+        
+        # Feedback Collection Section
+        with gr.Accordion("💬 Provide Feedback", open=False) as feedback_section:
+            gr.Markdown("""
+            ### Help improve future generations!
+            Share your clinical expertise about the generated case files. 
+            The AI will automatically categorize your feedback and learn from patterns.
+            """)
+            
+            with gr.Row():
+                profile_selector = gr.Number(
+                    label="Profile # (optional)", 
+                    value=1, 
+                    minimum=1, 
+                    step=1,
+                    scale=1
+                )
+                
+                # Load existing categories
+                existing_categories = load_feedback_categories().get("categories", [])
+                category_choices = ["Other (AI will categorize)"] + existing_categories
+                
+                feedback_category = gr.Dropdown(
+                    choices=category_choices,
+                    label="Category (optional - AI will suggest if left as 'Other')",
+                    value="Other (AI will categorize)",
+                    scale=2
+                )
+            
+            feedback_text = gr.Textbox(
+                label="Your Feedback",
+                placeholder="Example: 'The IEP goals are too advanced for a 1st grader' or 'Medical history lacks specificity about the onset of symptoms'",
+                lines=4
+            )
+            
+            with gr.Row():
+                submit_feedback_btn = gr.Button("Submit Feedback", variant="secondary", size="sm")
+                view_summary_btn = gr.Button("View Feedback Summary", variant="secondary", size="sm")
+            
+            feedback_status = gr.Markdown(value="", visible=False)
+            feedback_summary_display = gr.Markdown(value="", visible=False)
         
         def update_visibility(mode):
             return gr.update(visible=(mode == "Single Condition")), gr.update(visible=(mode == "Multiple Conditions"))
@@ -425,6 +702,24 @@ if __name__ == "__main__":
             fn=process_generation_request,
             inputs=[gen_mode, num_students_single, model_single, single_grade, single_disorders, visible_rows] + all_multi_inputs + [output_path],
             outputs=[output_display, generate_button, progress_status, cost_display]
+        )
+        
+        # Feedback submission handler
+        submit_feedback_btn.click(
+            fn=submit_feedback,
+            inputs=[profile_selector, feedback_text, feedback_category],
+            outputs=[feedback_text, feedback_status, feedback_category]
+        )
+        
+        # View feedback summary handler
+        view_summary_btn.click(
+            fn=get_feedback_summary,
+            inputs=None,
+            outputs=feedback_summary_display
+        ).then(
+            fn=lambda: gr.update(visible=True),
+            inputs=None,
+            outputs=feedback_summary_display
         )
     
     ui.launch()
