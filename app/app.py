@@ -16,7 +16,7 @@ from langchain_core.runnables import RunnablePassthrough
 
 # --- 1. CONFIGURATION and SETUP ---
 load_dotenv()
-DB_PATH = "data/slp_knowledge_base/"
+DB_PATH = "data/slp_vector_db/"
 EMBEDDING_MODEL = "text-embedding-3-small"
 MAX_CONDITIONS = 5
 DEFAULT_OUTPUT_PATH = "generated_case_files/"

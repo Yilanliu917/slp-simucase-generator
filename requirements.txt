@@ -1,4 +1,4 @@
-# requirements.txt
+# requirements.txt (Updated)
 
 # Core LangChain Packages
 langchain
@@ -14,8 +14,11 @@ langchain-anthropic
 chromadb
 pypdf
 python-docx
+docx2txt # <-- Added for Docx2txtLoader
 
 # Utilities
 python-dotenv
 pydantic
 gradio
+sentencepiece # <-- Added for Gemini
+lxml # <-- Added for document parsing robustness
