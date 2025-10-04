@@ -1,0 +1,24 @@
+{
+    "student_profile": {
+        "name": "Marcus Williams",
+        "age": 7,
+        "grade_level": "2nd Grade",
+        "gender": "Male",
+        "background": {
+            "medical_history": "History of chronic otitis media with effusion requiring PE tubes at age 3; mild developmental delays noted in early childhood",
+            "parent_concerns": "Parents report difficulty understanding Marcus's speech, especially when he speaks quickly. They note he often struggles to find the right words and has trouble following multi-step directions at home. He becomes frustrated when others don't understand him.",
+            "teacher_concerns": "Teacher reports Marcus has difficulty with phonics activities and reading aloud. He struggles to retell stories in sequence and often gives one-word answers during class discussions. Peers sometimes have trouble understanding him during group work, which impacts his social participation."
+        }
+    },
+    "annual_goals": [
+        "Marcus will produce /r/ and /l/ sounds in all positions of words with 80% accuracy across 3 consecutive sessions in structured activities by the end of the IEP year.",
+        "Marcus will use complete sentences with appropriate grammar (subject-verb agreement, correct pronouns, regular past tense -ed) with 80% accuracy during structured conversation activities across 3 consecutive sessions.",
+        "Marcus will follow 2-3 step directions containing temporal concepts (first, then, after, before) and spatial concepts with 80% accuracy across classroom and therapy settings as measured by data collection over 3 consecutive sessions."
+    ],
+    "latest_session_notes": [
+        "Marcus produced /r/ sounds in initial position of words with 60% accuracy and in medial position with 45% accuracy during articulation drills using visual cues and verbal modeling, showing improvement from 40% baseline for initial /r/.",
+        "During a story retell activity using picture supports, Marcus used complete sentences with correct subject-verb agreement in 6 out of 10 opportunities with 2 verbal prompts for sentence expansion.",
+        "Marcus followed 2-step directions containing 'before' and 'after' with 70% accuracy (7/10 trials) when given visual support cards and one repetition of the direction as needed."
+    ],
+    "generated_by_model": "claude-opus-4-1-20250805"
+}

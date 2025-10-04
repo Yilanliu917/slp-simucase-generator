@@ -1,0 +1,23 @@
+{
+    "student_profile": {
+        "name": "Oliver Thompson",
+        "age": 7,
+        "grade_level": "2nd Grade",
+        "gender": "Male",
+        "background": {
+            "medical_history": "History of otitis media",
+            "parent_concerns": "Parents are concerned about Oliver's difficulty in expressing his thoughts clearly and using complete sentences. They have noticed that he often struggles to find the right words and becomes frustrated when communicating.",
+            "teacher_concerns": "Oliver's teacher reports that he has trouble participating in class discussions and often provides short or incomplete responses. He seems to understand material but struggles to express his knowledge verbally."
+        }
+    },
+    "annual_goals": [
+        "Oliver will produce complete sentences with appropriate syntax in 4 out of 5 opportunities during structured language tasks.",
+        "Oliver will increase his expressive vocabulary by using at least two new words each week in spontaneous speech with 80% accuracy.",
+        "Oliver will retell a short story including key details and events in sequential order in 3 out of 4 opportunities."
+    ],
+    "latest_session_notes": [
+        "Oliver produced complete sentences with appropriate syntax in structured language tasks with 60% accuracy, requiring moderate verbal prompts.",
+        "Oliver used two new vocabulary words in spontaneous speech with 70% accuracy with minimal visual cues.",
+        "Oliver retold a short story including key details with 50% accuracy, needing significant verbal prompts to maintain sequence."
+    ]
+}
