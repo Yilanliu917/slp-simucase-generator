@@ -313,7 +313,7 @@ if __name__ == "__main__":
     grade_levels = ["Pre-K", "Kindergarten", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", 
                     "6th Grade", "7th Grade", "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"]
     disorder_types = ["Speech Sound", "Articulation", "Phonology", "Fluency", 
-                      "Expressive Language", "Receptive Language", "Language", "Voice"]
+                      "Expressive Language", "Receptive Language", "Language", "Voice", "Social Communication"]
     model_choices = ["gpt-4o", "gemini-2.5-pro", "claude-3-opus", "claude-3.5-sonnet"]
 
     with gr.Blocks(theme=gr.themes.Soft(), title="SLP SimuCase Generator", css="""
