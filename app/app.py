@@ -190,8 +190,12 @@ def process_generation_request(mode, *args):
     vectorstore = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
     
+# Inside the process_generation_request function in app.py
+
+    # ... (code before the template)
+    
     template = """
-    You are an expert school-based CCC-SLP creating a simulation case file based on a user's request.
+    You are an expert school-based CCC-SLP with 15+ years of experience creating a simulation case file based on a user's request.
     Use the following retrieved clinical context to generate a comprehensive, ethical, and realistic case file.
     Structure your output to perfectly match the requested schema.
 
@@ -200,8 +204,30 @@ def process_generation_request(mode, *args):
 
     Question:
     {question}
+
+    ---
+    **CRITICAL REQUIREMENTS:**
+
+    **1. Medical History:**
+    - The medical history must be detailed and relevant to the student's communication disorder.
+    - If the request includes complex conditions, integrate them realistically.
+    - **Example for a student with Cerebral Palsy:** "Student has a diagnosis of spastic diplegic Cerebral Palsy affecting motor coordination, particularly in the lower limbs and fine motor control necessary for articulation. History of premature birth at 30 weeks. Receives OT and PT services."
+    - **Example for a student with Autism:** "Student was diagnosed with Autism Spectrum Disorder (Level 1) at age 4. Exhibits challenges with social pragmatics, topic maintenance, and understanding non-literal language. Also shows restricted interests in trains and astronomy."
+
+    **2. Annual IEP Goals:**
+    - All goals MUST be measurable **SMART goals** (Specific, Measurable, Achievable, Relevant, Time-bound).
+    - Each goal must include a clear performance criterion (e.g., "80% accuracy," "in 4 out of 5 opportunities").
+    - **SMART Goal Example:** "By the end of the IEP cycle, the student will independently use appropriate conversational turn-taking (i.e., asking a partner-focused question or adding a related comment) in 4 out of 5 opportunities during a 5-minute structured conversation with a peer, with no more than 1 verbal prompt."
+
+    **3. Latest Session Notes:**
+    - You MUST generate exactly **three** recent session notes from three different, realistic dates.
+    - Each note must be written in a clinical format and include **measurable data**, **prompting levels**, and the **type of activity**.
+    - **Session Note Example:** "Date: 10/02/2025. Activity: Story sequencing cards. Goal: Narrative retell. Data: Student retold a 4-step story using temporal markers ('first', 'next') with 75% accuracy (3/4 steps correct) given moderate verbal prompts to recall the next step. Will reduce prompting next session."
+    ---
     """
     prompt = ChatPromptTemplate.from_template(template)
+    
+    # ... (the rest of your function)
     
     all_profiles_md = f"# SLP SimuCase Files\n**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     
